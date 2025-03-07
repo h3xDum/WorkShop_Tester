@@ -17,7 +17,7 @@ private:
 	static HANDLE _hChildStdInWrite, _hChildStdInRead;
 	static STARTUPINFOA _si;
 	static PROCESS_INFORMATION _pi;
-	;
+	
 
 	static void init_pipes();
 	static void init_process(const std::string& filePath);
@@ -30,6 +30,13 @@ private:
 	static bool check_indentation(const std::string& message);
 	static bool check_empty();
 	static bool check_quit();
+	static bool check_bool();
+	static bool check_int();
+	static bool check_str();
+
+	static bool check_valid_bool();
+	static bool check_unvalid_bool();
+
 };
 
 #endif // !TESTER_H

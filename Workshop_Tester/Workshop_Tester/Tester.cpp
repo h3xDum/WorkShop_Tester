@@ -4,8 +4,8 @@
 #define INDENTATION_EXCEPTION_MESSAGE "IndentationError: unexpected indent\r\n>>> "
 #define INDENTATION_EXCEPTION_SIZE 42
 #define SYNTAX_EXCEPTION_MESSAGE "SyntaxError: invalid syntax\r\n>>> "
-#define SYNTAX_EXCEPTION_SIZE 34
-#define NAME_ERROR_EXCEPTION "NameError : name '" 
+#define NAME_ERROR_END_INDEX 16
+#define NAME_ERROR_EXCEPTION "NameError : name " 
 #define SPACE " \n" // the new line is to ensure std::getline() on the interpreter will work correctly 
 #define TAB   "\t\n"
 
@@ -114,6 +114,24 @@ bool Tester::test_part_1() {
 	return true;
 }
 
+bool Tester::test_part_2() {
+
+	std::cout << "Testing Part 2: " << std::endl;
+	// dont care about the "Welcome to Magshimim Python Interperter" message on start 
+	if (!Tester::flush_buffer()) {
+		std::cout << "Didnt print nothing at the start of executaion?" << std::endl;
+		return false;
+	}
+
+	// Basic functionality tests
+	if (!Tester::check_bool() || !Tester::check_int() || !Tester::check_str()) {
+		std::cout << "[!] Test Failed" << std::endl;
+		return false;
+	}
+
+	std::cout << "\n[+] Part 2 Passed , congrats !\n" << std::endl;
+	return true;
+}
 
 bool Tester::flush_buffer() {
 	char buffer[BUFFER_SIZE];
@@ -219,11 +237,144 @@ bool Tester::check_empty() {
 	return true;
 }
 
-bool Tester::test_part_2() {
+bool Tester::check_bool() { // function that checks handling bool vals
+	std::cout << "Testing Bool type handling" << std::endl;
+	if (!Tester::check_valid_bool() || !Tester::check_unvalid_bool()) {
+		return false;
+	}
+
+	std::cout << "[+] -> Test Passed " << std::endl;
+	return true;
+}
+
+bool Tester::check_valid_bool() {
+	// Test for True/False with a valid syntax(capital letter)
+	std::string payload;
+	char buff[BUFFER_SIZE];
+	DWORD numsOfBytesWritten;
+	DWORD numsOfBytesRead;
+
+
+	payload = "True\n";
+	if (!WriteFile(_hChildStdInWrite, payload.c_str(), DWORD(strlen(payload.c_str())), &numsOfBytesWritten, nullptr)) {
+		std::cerr << "[!] Failed to Write input to the workshop interpreter stdin" << std::endl;
+		return false;
+	}
+	std::this_thread::sleep_for(std::chrono::milliseconds(150)); // ensure theres time to process the input 
+	if (!ReadFile(_hChildStdOutRead, buff, sizeof(buff) - 1, &numsOfBytesRead, nullptr)) {
+		std::cerr << "[!] Failed to read from the workshop interpreter stdout" << std::endl;
+		return false;
+	}
+	buff[numsOfBytesRead] = '\0';
+	// cmp with expected output
+	if (strcmp(buff, "True\r\n>>> ") != 0) {
+		std::cout << "Expected:\nTrue\n>>> " <<
+			"\nGot:\n" << buff << std::endl;
+		return false;
+	}
+	payload = "False\n";
+	if (!WriteFile(_hChildStdInWrite, payload.c_str(), DWORD(strlen(payload.c_str())), &numsOfBytesWritten, nullptr)) {
+		std::cerr << "[!] Failed to Write input to the workshop interpreter stdin" << std::endl;
+		return false;
+	}
+	std::this_thread::sleep_for(std::chrono::milliseconds(150)); // ensure theres time to process the input 
+	if (!ReadFile(_hChildStdOutRead, buff, sizeof(buff) - 1, &numsOfBytesRead, nullptr)) {
+		std::cerr << "[!] Failed to read from the workshop interpreter stdout" << std::endl;
+		return false;
+	}
+	// cmp with expected output
+	buff[numsOfBytesRead] = '\0';
+	if (strcmp(buff, "False\r\n>>> ") != 0) {
+		std::cout << "Expected:\nFalse\n>>> " <<
+			"\nGot:\n" << buff << std::endl;
+		return false;
+	}
+	return true;
+}
+
+bool Tester::check_unvalid_bool() {
+	// Test for invalid true/false, no capital letter
+	std::string payload;
+	char buff[BUFFER_SIZE];
+	DWORD numsOfBytesWritten;
+	DWORD numsOfBytesRead;
+
+	// Check for "true"
+	payload = "true\n";
+	if (!WriteFile(_hChildStdInWrite, payload.c_str(), DWORD(strlen(payload.c_str())), &numsOfBytesWritten, nullptr)) {
+		std::cerr << "[!] Failed to Write input to the workshop interpreter stdin" << std::endl;
+		return false;
+	}
+	std::this_thread::sleep_for(std::chrono::milliseconds(150)); // Ensure time to process input
+	if (!ReadFile(_hChildStdOutRead, buff, sizeof(buff) - 1, &numsOfBytesRead, nullptr)) {
+		std::cerr << "[!] Failed to read from the workshop interpreter stdout" << std::endl;
+		return false;
+	}
+	buff[numsOfBytesRead] = '\0';
+
+	// Compare with expected output
+	std::string error_message(buff);
+	if (error_message != SYNTAX_EXCEPTION_MESSAGE) {
+		// might have part 3 completed hence a name error exception
+		if (error_message.find(NAME_ERROR_EXCEPTION) == 0) {  // Check if starts with "NameError : name "
+			std::string expected_error = "'true' is not defined\r\n>>> ";
+			std::string substring = error_message.substr(NAME_ERROR_END_INDEX);
+			substring.erase(substring.begin()); // trim space from the beggining
+			if (substring != expected_error) {
+				std::cout << "Expected:\n" << NAME_ERROR_EXCEPTION + expected_error << "\nGot:\n" << error_message << std::endl;
+				return false;
+			}
+		}
+		else {
+			std::cout << "Expected:\n" << SYNTAX_EXCEPTION_MESSAGE << "\nGot:\n" << buff << std::endl;
+			return false;
+		}
+	}
+
+	// Check for "false"
+	payload = "false\n";
+	if (!WriteFile(_hChildStdInWrite, payload.c_str(), DWORD(strlen(payload.c_str())), &numsOfBytesWritten, nullptr)) {
+		std::cerr << "[!] Failed to Write input to the workshop interpreter stdin" << std::endl;
+		return false;
+	}
+	std::this_thread::sleep_for(std::chrono::milliseconds(150)); // Ensure time to process input
+	if (!ReadFile(_hChildStdOutRead, buff, sizeof(buff) - 1, &numsOfBytesRead, nullptr)) {
+		std::cerr << "[!] Failed to read from the workshop interpreter stdout" << std::endl;
+		return false;
+	}
+	buff[numsOfBytesRead] = '\0';
+
+	// Compare with expected output
+	error_message = buff;
+	if (error_message != SYNTAX_EXCEPTION_MESSAGE) {
+		// might have part 3 completed hence a name error exception
+		if (error_message.find(NAME_ERROR_EXCEPTION) == 0) {  // Check if starts with "NameError : name "
+			// build the end of the expected error
+			std::string expected_error = "'false' is not defined\r\n>>> ";
+			std::string substring = error_message.substr(NAME_ERROR_END_INDEX);
+			substring.erase(substring.begin()); // trim space from the beggining
+			if (substring != expected_error) {
+				std::cout << "Expected:\n" << NAME_ERROR_EXCEPTION + expected_error << "\nGot:\n" << error_message << std::endl;
+				return false;
+			}
+		}
+		else {
+			std::cout << "Expected:\n" << SYNTAX_EXCEPTION_MESSAGE << "\nGot:\n" << buff << std::endl;
+			return false;
+		}
+	}
 
 	return true;
 }
 
+
+bool Tester::check_int() {
+	return true;
+}
+
+bool Tester::check_str() {
+	return true;
+}
 
 void Tester::cleanup() {
 
