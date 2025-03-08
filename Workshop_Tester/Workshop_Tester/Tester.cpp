@@ -148,7 +148,7 @@ bool Tester::flush_buffer() {
 }
 
 bool Tester::check_quit() {
-	std::cout << "Testing quit() functionality" << std::endl;
+	std::cout << " - Testing quit() functionality" << std::endl;
 
 	std::string message = "quit()\n"; // new line char for std::getline() ... 
 	DWORD numOfBytesWritten;
@@ -170,13 +170,13 @@ bool Tester::check_quit() {
 		return false;
 	}
 
-	std::cout << "[+] -> Test Passed " << std::endl;
+	std::cout << "   [+] -> Test Passed" << std::endl;
 	return true;
 
 }
 
 bool Tester::check_indentation(const std::string& message) {
-	std::cout << "Testing for indentation error on " << ((message == SPACE) ? "SPACE\n" : "TAB\n");
+	std::cout << " - Testing for indentation error on " << ((message == SPACE) ? "SPACE\n" : "TAB\n");
 
 	// Send payload to stdin
 	DWORD numOfBytesWritten;
@@ -203,13 +203,13 @@ bool Tester::check_indentation(const std::string& message) {
 		return false;
 	}
 
-	std::cout << "[+] -> Test Passed " << std::endl;
+	std::cout << "   [+] -> Test Passed" << std::endl;
 	return true;
 
 }
 
 bool Tester::check_empty() {
-	std::cout << "Testing for ENTER input" << std::endl;
+	std::cout << " - Testing for ENTER input" << std::endl;
 	// send a new line char to validate the program doesnt crash
 	const char* emptyString = "\n";
 	DWORD numOfBytsWritten;
@@ -233,17 +233,17 @@ bool Tester::check_empty() {
 		return false;
 	}
 
-	std::cout << "[+] -> Test Passed " << std::endl;
+	std::cout << "   [+] -> Test Passed" << std::endl;
 	return true;
 }
 
 bool Tester::check_bool() { // function that checks handling bool vals
-	std::cout << "Testing Bool type handling" << std::endl;
+	std::cout << " - Testing Bool type handling" << std::endl;
 	if (!Tester::check_valid_bool() || !Tester::check_unvalid_bool()) {
 		return false;
 	}
 
-	std::cout << "[+] -> Test Passed " << std::endl;
+	std::cout << "   [+] -> Test Passed" << std::endl;
 	return true;
 }
 
@@ -369,6 +369,32 @@ bool Tester::check_unvalid_bool() {
 
 
 bool Tester::check_int() {
+	std::cout << " - Testing Integer type handling" << std::endl;
+	std::string payload;
+	char buff[BUFFER_SIZE];
+	DWORD numsOfBytesWritten;
+	DWORD numsOfBytesRead;
+
+
+	payload = "-00054\n";  
+	if (!WriteFile(_hChildStdInWrite, payload.c_str(), DWORD(strlen(payload.c_str())), &numsOfBytesWritten, nullptr)) {
+		std::cerr << "[!] Failed to Write input to the workshop interpreter stdin" << std::endl;
+		return false;
+	}
+	std::this_thread::sleep_for(std::chrono::milliseconds(150)); // ensure theres time to process the input 
+	if (!ReadFile(_hChildStdOutRead, buff, sizeof(buff) - 1, &numsOfBytesRead, nullptr)) {
+		std::cerr << "[!] Failed to read from the workshop interpreter stdout" << std::endl;
+		return false;
+	}
+	buff[numsOfBytesRead] = '\0';
+	// cmp with expected output
+	if (strcmp(buff, "-54\r\n>>> ") != 0) {
+		std::cout << "Expected:\n-54\n>>> " <<
+			"\nGot:\n" << buff << std::endl;
+		return false;
+	}
+	
+	std::cout << "   [+] -> Test Passed" << std::endl;
 	return true;
 }
 
