@@ -37,6 +37,7 @@ private:
 	static bool check_bool();
 	static bool check_int();
 	static bool check_str();
+	static bool check_correct_var_assignment();
 
 	static bool check_valid_bool();
 	static bool check_unvalid_bool();

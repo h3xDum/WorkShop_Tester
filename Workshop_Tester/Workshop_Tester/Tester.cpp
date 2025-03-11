@@ -142,7 +142,8 @@ bool Tester::test_part_2() {
 bool Tester::test_part_3() {
 	std::cout << "Testing Part 3: " << std::endl;
 
-	if (!Tester::check_invalid_var_names() || !Tester::check_no_error() || !Tester::check_redefinitions()){
+	if (!Tester::check_invalid_var_names() || !Tester::check_no_error() ||
+		!Tester::check_redefinitions() || !Tester::check_correct_var_assignment()) {
 		std::cout << "[!] Test Failed" << std::endl;
 		return false;
 	}
@@ -325,7 +326,7 @@ bool Tester::check_invalid_var_names() {
 			std::cerr << "[!] Failed to Write input to the workshop interpreter stdin" << std::endl;
 			return false;
 		}
-		std::this_thread::sleep_for(std::chrono::microseconds(200));
+		std::this_thread::sleep_for(std::chrono::microseconds(150));
 		if (!ReadFile(_hChildStdOutRead, buff, sizeof(buff) - 1, &numOfBytesRead, nullptr)) {
 			std::cerr << "[!] Failed to read from the workshop interpreter stdout" << std::endl;
 			return false;
@@ -344,11 +345,44 @@ bool Tester::check_invalid_var_names() {
 }
 
 bool Tester::check_no_error() {
+	std::cout << " - Testing for valid variable names" << std::endl;
 
+	std::vector<std::string> messages = { "a1 = 100\n", "a2 = True\n", "a123 = 'bbb'\n", "a_b = 200\n", "a_3b = 25\n", "_a = 5\n"};
+	DWORD numOfBytesWritten;
+	DWORD numOfBytesRead;
+	char buff[BUFFER_SIZE];
+
+	// make sure they return an invalid syntax error 
+	for (const auto& str : messages) {
+		if (!WriteFile(_hChildStdInWrite, str.c_str(), DWORD(strlen(str.c_str())), &numOfBytesWritten, nullptr)) {
+			std::cerr << "[!] Failed to Write input to the workshop interpreter stdin" << std::endl;
+			return false;
+		}
+		std::this_thread::sleep_for(std::chrono::microseconds(150));
+		if (!ReadFile(_hChildStdOutRead, buff, sizeof(buff) - 1, &numOfBytesRead, nullptr)) {
+			std::cerr << "[!] Failed to read from the workshop interpreter stdout" << std::endl;
+			return false;
+		}
+		buff[numOfBytesRead] = '\0';
+
+		if (strcmp(buff, ">>> ") != 0) {
+			std::cout << "For input: " << str;
+			std::cout << "Expected:\n" << "\r\n>>> " <<
+				"\nGot:\n" << buff << std::endl;
+			return false;
+		}
+	}
+	std::cout << "   [+] Test Passed " << std::endl;
 	return true;
+	
 }
 
 bool Tester::check_redefinitions() {
+	
+	return true;
+}
+
+bool Tester::check_correct_var_assignment() {
 	
 	return true;
 }
