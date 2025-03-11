@@ -3,8 +3,10 @@
 
 #include <iostream>
 #include <windows.h>
-#include <string>
 #include <thread>
+#include <string>
+#include <map>
+#include <algorithm>
 
 class Tester {
 
@@ -36,6 +38,9 @@ private:
 
 	static bool check_valid_bool();
 	static bool check_unvalid_bool();
+	static bool check_str_syntax_error(const std::string& str);
+	static bool check_valid_str(const std::string& message , std::string& expectedOutput);
+
 
 };
 
