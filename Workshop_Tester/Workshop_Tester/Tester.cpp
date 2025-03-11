@@ -18,19 +18,24 @@ PROCESS_INFORMATION Tester::_pi;
 
 void Tester::run_tests(const std::string& filePath) {
 
-	// Test Part  1
 	Tester::init_communication(filePath);
 	if (!Tester::test_part_1()) {
 		std::cout << "[!] Part 1 failed :( " << std::endl;
 		return;
 	}
 
-	// Test Part 2
 	Tester::init_communication(filePath);
 	if (!Tester::test_part_2()) {
 		std::cout << "[!] Part 2 failed :( " << std::endl;
 		return;
 	}
+	
+	if (!Tester::test_part_3()) {
+		std::cout << "[!] Part 3 failed :( " << std::endl;
+		return;
+	}
+
+	
 
 
 }
@@ -134,20 +139,20 @@ bool Tester::test_part_2() {
 	return true;
 }
 
-bool Tester::flush_buffer() {
-	char buffer[BUFFER_SIZE];
-	DWORD numOfBytesRead;
+bool Tester::test_part_3() {
+	std::cout << "Testing Part 3: " << std::endl;
 
-	// flush meaningless cout buffer 
-	std::this_thread::sleep_for(std::chrono::milliseconds(150)); // ensure theres time for the interpreter to output
-	if (!ReadFile(_hChildStdOutRead, buffer, sizeof(buffer) - 1, &numOfBytesRead, nullptr)) {
-		std::cerr << "[!] Failed to read from the workshop interpreter stdout " << std::endl;
+	if (!Tester::check_invalid_var_names() || !Tester::check_no_error() || !Tester::check_redefinitions()){
+		std::cout << "[!] Test Failed" << std::endl;
 		return false;
 	}
-	return true;
 
+	std::cout << "\n[+] Part 3 Passed , congrats !\n" << std::endl;
+	return true;
 }
 
+
+// Part 1 Tests functions
 bool Tester::check_quit() {
 	std::cout << " - Testing quit() functionality" << std::endl;
 
@@ -238,6 +243,8 @@ bool Tester::check_empty() {
 	return true;
 }
 
+
+// Part 2 Tests
 bool Tester::check_bool() { // function that checks handling bool vals
 	std::cout << " - Testing Bool type handling" << std::endl;
 	if (!Tester::check_valid_bool() || !Tester::check_unvalid_bool()) {
@@ -246,6 +253,125 @@ bool Tester::check_bool() { // function that checks handling bool vals
 
 	std::cout << "   [+] -> Test Passed" << std::endl;
 	return true;
+}
+
+bool Tester::check_int() {
+	std::cout << " - Testing Integer type handling" << std::endl;
+	std::string payload;
+	char buff[BUFFER_SIZE];
+	DWORD numsOfBytesWritten;
+	DWORD numsOfBytesRead;
+
+	// should trim the leading zeros 
+	payload = "-00054\n";
+	if (!WriteFile(_hChildStdInWrite, payload.c_str(), DWORD(strlen(payload.c_str())), &numsOfBytesWritten, nullptr)) {
+		std::cerr << "[!] Failed to Write input to the workshop interpreter stdin" << std::endl;
+		return false;
+	}
+	std::this_thread::sleep_for(std::chrono::milliseconds(150)); // ensure theres time to process the input 
+	if (!ReadFile(_hChildStdOutRead, buff, sizeof(buff) - 1, &numsOfBytesRead, nullptr)) {
+		std::cerr << "[!] Failed to read from the workshop interpreter stdout" << std::endl;
+		return false;
+	}
+	buff[numsOfBytesRead] = '\0';
+	// cmp with expected output
+	if (strcmp(buff, "-54\r\n>>> ") != 0) {
+		std::cout << "Expected:\n-54\n>>> " <<
+			"\nGot:\n" << buff << std::endl;
+		return false;
+	}
+
+	std::cout << "   [+] -> Test Passed" << std::endl;
+	return true;
+}
+
+bool Tester::check_str() {
+
+	std::cout << " - Testing String type handling" << std::endl;
+	// Test syntax error inputs
+	if (!Tester::check_str_syntax_error("\"acbd'\n") || !Tester::check_str_syntax_error("\"asf\"aaa\"\n")) {
+		return false;
+	}
+
+	// Test for valid inputs
+	std::map<std::string, std::string> validStrings = { {"\"Blabla\"\n" , "'Blabla'"},
+		 { "'foo foo'\n" , "'foo foo'"},
+		 {"\"Bla'Foo\"\n" , "\"Bla'Foo\""},
+		 {"\"asf'ss'asf\"\n", "\"asf'ss'asf\""}
+	};
+
+	for (auto it = validStrings.begin(); it != validStrings.end(); it++) {
+		if (!Tester::check_valid_str(it->first, it->second))
+			return false;
+	}
+
+	std::cout << "   [+] -> Test Paseed" << std::endl;
+	return true;
+}
+
+
+// Part 3 Tests
+bool Tester::check_invalid_var_names() {
+	std::cout << " - Testing for invalid variable names" << std::endl;
+
+	std::vector<std::string> messages = { "3a = 3\n", "a#$ = 5\n"};
+	DWORD numOfBytesWritten;
+	DWORD numOfBytesRead;
+	char buff[BUFFER_SIZE];
+
+	// make sure they return an invalid syntax error 
+	for (const auto& str : messages) {
+		if (!WriteFile(_hChildStdInWrite, str.c_str(), DWORD(strlen(str.c_str())), &numOfBytesWritten, nullptr)) {
+			std::cerr << "[!] Failed to Write input to the workshop interpreter stdin" << std::endl;
+			return false;
+		}
+		std::this_thread::sleep_for(std::chrono::microseconds(200));
+		if (!ReadFile(_hChildStdOutRead, buff, sizeof(buff) - 1, &numOfBytesRead, nullptr)) {
+			std::cerr << "[!] Failed to read from the workshop interpreter stdout" << std::endl;
+			return false;
+		}
+		buff[numOfBytesRead] = '\0';
+
+		if (strcmp(buff, SYNTAX_EXCEPTION_MESSAGE) != 0) {
+			std::cout << "For input: " << str;
+			std::cout << "Expected:\n" << SYNTAX_EXCEPTION_MESSAGE <<
+				"\nGot:\n" << buff << std::endl;
+			return false;
+		}
+	}
+	std::cout << "   [+] Test Passed " << std::endl;
+	return true;
+}
+
+bool Tester::check_no_error() {
+
+	return true;
+}
+
+bool Tester::check_redefinitions() {
+	
+	return true;
+}
+
+bool Tester::check_invalid_var() {
+
+	return true;
+}
+
+
+// General helper functions
+bool Tester::flush_buffer() {
+	char buffer[BUFFER_SIZE];
+	DWORD numOfBytesRead;
+
+	// flush meaningless cout buffer 
+	std::this_thread::sleep_for(std::chrono::milliseconds(150)); // ensure theres time for the interpreter to output
+	if (!ReadFile(_hChildStdOutRead, buffer, sizeof(buffer) - 1, &numOfBytesRead, nullptr)) {
+		std::cerr << "[!] Failed to read from the workshop interpreter stdout " << std::endl;
+		return false;
+	}
+	return true;
+
 }
 
 bool Tester::check_valid_bool() {
@@ -368,61 +494,6 @@ bool Tester::check_unvalid_bool() {
 	return true;
 }
 
-
-bool Tester::check_int() {
-	std::cout << " - Testing Integer type handling" << std::endl;
-	std::string payload;
-	char buff[BUFFER_SIZE];
-	DWORD numsOfBytesWritten;
-	DWORD numsOfBytesRead;
-
-	// should trim the leading zeros 
-	payload = "-00054\n";  
-	if (!WriteFile(_hChildStdInWrite, payload.c_str(), DWORD(strlen(payload.c_str())), &numsOfBytesWritten, nullptr)) {
-		std::cerr << "[!] Failed to Write input to the workshop interpreter stdin" << std::endl;
-		return false;
-	}
-	std::this_thread::sleep_for(std::chrono::milliseconds(150)); // ensure theres time to process the input 
-	if (!ReadFile(_hChildStdOutRead, buff, sizeof(buff) - 1, &numsOfBytesRead, nullptr)) {
-		std::cerr << "[!] Failed to read from the workshop interpreter stdout" << std::endl;
-		return false;
-	}
-	buff[numsOfBytesRead] = '\0';
-	// cmp with expected output
-	if (strcmp(buff, "-54\r\n>>> ") != 0) {
-		std::cout << "Expected:\n-54\n>>> " <<
-			"\nGot:\n" << buff << std::endl;
-		return false;
-	}
-	
-	std::cout << "   [+] -> Test Passed" << std::endl;
-	return true;
-}
-
-bool Tester::check_str() {
-	
-	std::cout << " - Testing String type handling" << std::endl;
-	// Test syntax error inputs
-	if (!Tester::check_str_syntax_error("\"acbd'\n") || !Tester::check_str_syntax_error("\"asf\"aaa\"\n")) {
-		return false;
-	}
-
-	// Test for valid inputs
-	std::map<std::string, std::string> validStrings = { {"\"Blabla\"\n" , "'Blabla'"},
-		 { "'foo foo'\n" , "'foo foo'"},
-		 {"\"Bla'Foo\"\n" , "\"Bla'Foo\""},
-		 {"\"asf'ss'asf\"\n", "\"asf'ss'asf\""}
-	};
-
-	for (auto it = validStrings.begin(); it != validStrings.end(); it++) {
-		if (!Tester::check_valid_str(it->first, it->second))
-			return false;
-	}
-
-	std::cout << "   [+] -> Test Paseed" << std::endl;
-	return true;
-}
-
 bool Tester::check_str_syntax_error(const std::string& str) {
 	char buff[BUFFER_SIZE];
 	DWORD numOfBytesWritten;
@@ -450,13 +521,13 @@ bool Tester::check_str_syntax_error(const std::string& str) {
 	return true;
 }
 
-bool Tester::check_valid_str(const std::string& messege, std::string& expectedOutput) {
+bool Tester::check_valid_str(const std::string& message, std::string& expectedOutput) {
 	char buff[BUFFER_SIZE];
 	DWORD numOfBytesWritten;
 	DWORD numOfBytesRead;
 
 	// Send the invalid str
-	if (!WriteFile(_hChildStdInWrite, messege.c_str(), DWORD(strlen(messege.c_str())), &numOfBytesWritten, nullptr)) {
+	if (!WriteFile(_hChildStdInWrite, message.c_str(), DWORD(strlen(message.c_str())), &numOfBytesWritten, nullptr)) {
 		std::cerr << "[!] Failed to Write input to the workshop interpreter stdin" << std::endl;
 		return false;
 	}
@@ -470,7 +541,7 @@ bool Tester::check_valid_str(const std::string& messege, std::string& expectedOu
 	// build the full expectedOutput
 	expectedOutput.append("\r\n>>> ");
 	if (strcmp(buff, expectedOutput.c_str()) != 0) {
-		std::cout << "For input: " << messege;
+		std::cout << "For input: " << message;
 		std::cout << "Expected:\n" << expectedOutput <<
 			"\nGot:\n" << buff << std::endl;
 		return false;

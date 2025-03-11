@@ -5,6 +5,7 @@
 #include <windows.h>
 #include <thread>
 #include <string>
+#include <vector>
 #include <map>
 #include <algorithm>
 
@@ -27,6 +28,7 @@ private:
 
 	static bool test_part_1();
 	static bool test_part_2();
+	static bool test_part_3();
 
 	static bool flush_buffer();
 	static bool check_indentation(const std::string& message);
@@ -40,6 +42,10 @@ private:
 	static bool check_unvalid_bool();
 	static bool check_str_syntax_error(const std::string& str);
 	static bool check_valid_str(const std::string& message , std::string& expectedOutput);
+	static bool check_invalid_var_names();
+	static bool check_invalid_var();
+	static bool check_no_error();
+	static bool check_redefinitions();
 
 
 };
