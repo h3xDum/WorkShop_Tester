@@ -377,6 +377,125 @@ bool Tester::check_no_error() {
 
 bool Tester::check_redefinitions() {
 	
+	std::cout << " - Testing variables redefinitions " << std::endl;
+	if (!Tester::check_basics_redefs() || !Tester::check_var_to_var_defs()) {
+		std::cout << "[!] Test failed" << std::endl;
+		return false;
+	}
+
+	std::cout << "   [+] Test Passed " << std::endl;
+	return true;
+}
+
+bool Tester::check_basics_redefs() {
+	std::multimap<const std::string, const std::string> vars = { {"a", "100"},
+		{"a", "True"},
+		{"b", "25"},
+		{"b", "False"} };
+
+	std::string msg;
+	DWORD numOfBytesWritten;
+	DWORD numOfBytesRead;
+	char buff[BUFFER_SIZE];
+	for (auto it = vars.begin(); it != vars.end(); it++) {
+		// create the variables for the interprester
+		msg = it->first + " = " + it->second + "\n";
+		if (!WriteFile(_hChildStdInWrite, msg.c_str(), DWORD(strlen(msg.c_str())), &numOfBytesWritten, nullptr)) {
+			std::cerr << "[!] Failed to Write input to the workshop interpreter stdin" << std::endl;
+			return false;
+		}
+		Tester::flush_buffer();
+
+		// check correct assignment
+		msg = it->second + "\r\n>>> ";
+		if (!WriteFile(_hChildStdInWrite, msg.c_str(), DWORD(strlen(msg.c_str())), &numOfBytesWritten, nullptr)) {
+			std::cerr << "[!] Failed to Write input to the workshop interpreter stdin" << std::endl;
+			return false;
+		}
+		std::this_thread::sleep_for(std::chrono::milliseconds(150));
+		if (!ReadFile(_hChildStdOutRead, buff, sizeof(buff) - 1, &numOfBytesRead, nullptr)) {
+			std::cerr << "[!] Failed to read from the workshop interpreter stdout " << std::endl;
+			return false;
+		}
+		buff[numOfBytesRead] = '\0';
+		// build the full expected output
+		std::string expectedOutput(it->second + "\r\n>>> ");
+		if (expectedOutput != buff) {
+			std::cout << "For input: " << it->first << std::endl;
+			std::cout << "Expected:\n" << expectedOutput <<
+				"\nGot:\n" << buff << std::endl;
+			return false;
+		}
+	}
+	std::cout << "    * basic redefs passed " << std::endl;
+	return true;
+}
+
+bool Tester::check_var_to_var_defs() {
+	std::string msg;
+	DWORD numOfBytesWritten;
+	DWORD numOfBytesRead;
+	char buff[BUFFER_SIZE];
+
+	// assigning vars values
+	msg = "a = True\n";
+	if (!WriteFile(_hChildStdInWrite, msg.c_str(), DWORD(strlen(msg.c_str())), &numOfBytesWritten, nullptr)) {
+		std::cerr << "[!] Failed to Write input to the workshop interpreter stdin" << std::endl;
+		return false;
+	}
+	Tester::flush_buffer();
+	msg = "b = 25\n";
+	if (!WriteFile(_hChildStdInWrite, msg.c_str(), DWORD(strlen(msg.c_str())), &numOfBytesWritten, nullptr)) {
+		std::cerr << "[!] Failed to Write input to the workshop interpreter stdin" << std::endl;
+		return false;
+	}
+	Tester::flush_buffer();
+
+	// assign var to var value
+	msg = "a = b\n";
+	if (!WriteFile(_hChildStdInWrite, msg.c_str(), DWORD(strlen(msg.c_str())), &numOfBytesWritten, nullptr)) {
+		std::cerr << "[!] Failed to Write input to the workshop interpreter stdin" << std::endl;
+		return false;
+	}
+	Tester::flush_buffer();
+	// check a & b 
+	msg = "a\n";
+	if (!WriteFile(_hChildStdInWrite, msg.c_str(), DWORD(strlen(msg.c_str())), &numOfBytesWritten, nullptr)) {
+		std::cerr << "[!] Failed to Write input to the workshop interpreter stdin" << std::endl;
+		return false;
+	}
+	std::this_thread::sleep_for(std::chrono::milliseconds(150));
+	if (!ReadFile(_hChildStdOutRead, buff, sizeof(buff) - 1, &numOfBytesRead, nullptr)) {
+		std::cerr << "[!] Failed to read from the workshop interpreter stdout " << std::endl;
+		return false;
+	}
+	buff[numOfBytesRead] = '\0';
+	if (strcmp(buff, "25\r\n>>> ") != 0) {
+		std::cout << "For input: " << msg << std::endl;
+		std::cout << "Expected:\n" << "25" <<
+			"\nGot:\n" << buff << std::endl;
+		return false;
+	}
+
+	msg = "b\n";
+	if (!WriteFile(_hChildStdInWrite, msg.c_str(), DWORD(strlen(msg.c_str())), &numOfBytesWritten, nullptr)) {
+		std::cerr << "[!] Failed to Write input to the workshop interpreter stdin" << std::endl;
+		return false;
+	}
+	std::this_thread::sleep_for(std::chrono::milliseconds(150));
+	if (!ReadFile(_hChildStdOutRead, buff, sizeof(buff) - 1, &numOfBytesRead, nullptr)) {
+		std::cerr << "[!] Failed to read from the workshop interpreter stdout " << std::endl;
+		return false;
+	}
+	buff[numOfBytesRead] = '\0';
+	if (strcmp(buff, "25\r\n>>> ") != 0) {
+		std::cout << "For input: " << msg << std::endl;
+		std::cout << "Expected:\n" << "25" <<
+			"\nGot:\n" << buff << std::endl;
+		return false;
+	}
+	
+	std::cout << "    * var to var defs passed" << std::endl;
 	return true;
 }
 

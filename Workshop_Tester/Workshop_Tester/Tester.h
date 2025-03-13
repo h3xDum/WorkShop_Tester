@@ -59,6 +59,8 @@ private:
 	bool check_invalid_var();
 	bool check_no_error();
 	bool check_redefinitions();
+	bool check_basics_redefs();
+	bool check_var_to_var_defs();
 
 
 };
