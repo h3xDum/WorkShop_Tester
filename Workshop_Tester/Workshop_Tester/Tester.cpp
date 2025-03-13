@@ -9,12 +9,16 @@
 #define SPACE " \n" // the new line is to ensure std::getline() on the interpreter will work correctly 
 #define TAB   "\t\n"
 
-// static variabels 
-HANDLE Tester::_hChildStdOutRead, Tester::_hChildStdOutWrite;
-HANDLE Tester::_hChildStdInWrite, Tester::_hChildStdInRead;
-STARTUPINFOA Tester::_si;
-PROCESS_INFORMATION Tester::_pi;
+Tester::Tester() : _hChildStdOutRead(nullptr), _hChildStdOutWrite(nullptr), 
+				   _hChildStdInWrite(nullptr), _hChildStdInRead(nullptr),
+				   _si({0}), _pi({0}) {
+	
 
+}
+
+Tester::~Tester() {
+	Tester::cleanup();
+}
 
 void Tester::run_tests(const std::string& filePath) {
 

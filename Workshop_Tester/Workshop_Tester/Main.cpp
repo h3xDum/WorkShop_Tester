@@ -9,12 +9,12 @@ int main(int argc, char* argv[]) {
 		return 0;
 	}
 	try {
-		Tester::run_tests(argv[1]);
+		Tester t;
+		t.run_tests(argv[1]);
 	}
 	catch (const std::exception& e) {
 		std::cerr << e.what();
 	}
 
-	Tester::cleanup();
 	return 0;
 }
