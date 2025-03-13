@@ -49,7 +49,7 @@ private:
 	bool check_bool();
 	bool check_int();
 	bool check_str();
-	bool check_correct_var_assignment();
+	bool check_valid_var_assignment();
 
 	bool check_valid_bool();
 	bool check_unvalid_bool();

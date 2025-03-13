@@ -29,9 +29,9 @@ Tester::Tester(const std::string& filePath) : _hChildStdOutRead(nullptr), _hChil
 	_part2Tests.push_back(&Tester::check_str);
 
 	_part3Tests.push_back(&Tester::check_invalid_var_names);
-	_part3Tests.push_back(&Tester::check_no_error);
+	_part3Tests.push_back(&Tester::check_valid_var_assignment);
 	_part3Tests.push_back(&Tester::check_redefinitions);
-	_part3Tests.push_back(&Tester::check_correct_var_assignment);
+	
 
 
 }
@@ -338,12 +338,12 @@ bool Tester::check_invalid_var_names() {
 			return false;
 		}
 	}
+
 	std::cout << "   [+] Test Passed " << std::endl;
 	return true;
 }
 
 bool Tester::check_no_error() {
-	std::cout << " - Testing for valid variable names" << std::endl;
 
 	std::vector<std::string> messages = { "a1 = 100\n", "a2 = True\n", "a123 = 'bbb'\n", "a_b = 200\n", "a_3b = 25\n", "_a = 5\n"};
 	DWORD numOfBytesWritten;
@@ -370,7 +370,7 @@ bool Tester::check_no_error() {
 			return false;
 		}
 	}
-	std::cout << "   [+] Test Passed " << std::endl;
+
 	return true;
 	
 }
@@ -380,8 +380,56 @@ bool Tester::check_redefinitions() {
 	return true;
 }
 
-bool Tester::check_correct_var_assignment() {
+bool Tester::check_valid_var_assignment() {
+	std::cout << " - Testing valid variable assignments " << std::endl;
+	if (!Tester::check_no_error()) {
+		return false;
+	}
+
+	std::map<std::string, std::string> vars = { {"a1", "5"},
+		{"a2", "        False"},
+		{"a123", "'check this'"}};
 	
+	// send the message
+	DWORD numOfBytesWritten;
+	for (auto it = vars.begin(); it != vars.end(); it++) {
+		// create the variables for the interprester
+		std::string msg(it->first + " = " + it->second + "\n");;
+		if (!WriteFile(_hChildStdInWrite, msg.c_str(), DWORD(strlen(msg.c_str())), &numOfBytesWritten, nullptr)) {
+			std::cerr << "[!] Failed to Write input to the workshop interpreter stdin" << std::endl;
+			return false;
+		}
+		Tester::flush_buffer();
+	}
+	// check the output
+	DWORD numOfBytesRead;
+	char buff[BUFFER_SIZE];
+	for (auto it = vars.begin(); it != vars.end(); it++) {
+		// check the var values from the interpreter
+		std::string msg(it->first + "\n");
+		if (!WriteFile(_hChildStdInWrite, msg.c_str(), DWORD(strlen(msg.c_str())), &numOfBytesWritten, nullptr)) {
+			std::cerr << "[!] Failed to Write input to the workshop interpreter stdin" << std::endl;
+			return false;
+		}
+		std::this_thread::sleep_for(std::chrono::milliseconds(150));
+		if (!ReadFile(_hChildStdOutRead, buff, sizeof(buff) - 1, &numOfBytesRead, nullptr)) {
+			std::cerr << "[!] Failed to read from the workshop interpreter stdout " << std::endl;
+			return false;
+		}
+		buff[numOfBytesRead] = '\0';
+		// build the full expected output
+		it->second = it->second.substr(it->second.find_first_not_of(" ")); // trim the leadin space on a2 value
+		std::string expectedOutput(it->second + "\r\n>>> ");
+		if (expectedOutput != buff) {
+			std::cout << "For input: " << it->first << std::endl;
+			std::cout << "Expected:\n" << expectedOutput <<
+				"\nGot:\n" << buff << std::endl;
+			return false;
+		}
+	}
+
+
+	std::cout << "   [+] Test Passed " << std::endl;
 	return true;
 }
 
