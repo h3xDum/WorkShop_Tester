@@ -12,41 +12,53 @@
 class Tester {
 
 public:
-	static void run_tests(const std::string& filePath);
-	static void cleanup();
+	Tester(const std::string& filePath);
+	~Tester();
+	void run_tests();
 	
 private:
-	static HANDLE _hChildStdOutRead, _hChildStdOutWrite;
-	static HANDLE _hChildStdInWrite, _hChildStdInRead;
-	static STARTUPINFOA _si;
-	static PROCESS_INFORMATION _pi;
+	HANDLE _hChildStdOutRead, _hChildStdOutWrite;
+	HANDLE _hChildStdInWrite, _hChildStdInRead;
+	STARTUPINFOA _si;
+	PROCESS_INFORMATION _pi;
+	std::string _filePath;
 	
 
-	static void init_pipes();
-	static void init_process(const std::string& filePath);
-	static void init_communication(const std::string& filePath); // Create the communication pipeline 
+	using testFunction = bool (Tester::*)();
+	std::vector<testFunction> _generalTests;
+	std::vector<testFunction> _part1Tests;
+	std::vector<testFunction> _part2Tests;
+	std::vector<testFunction> _part3Tests;
 
-	static bool test_part_1();
-	static bool test_part_2();
-	static bool test_part_3();
+	void init_pipes();
+	void init_process();
+	void init_communication(); // Create the communication pipeline 
+	void cleanup();
+	
 
-	static bool flush_buffer();
-	static bool check_indentation(const std::string& message);
-	static bool check_empty();
-	static bool check_quit();
-	static bool check_bool();
-	static bool check_int();
-	static bool check_str();
-	static bool check_correct_var_assignment();
+	bool test_part_1();
+	bool test_part_2();
+	bool test_part_3();
 
-	static bool check_valid_bool();
-	static bool check_unvalid_bool();
-	static bool check_str_syntax_error(const std::string& str);
-	static bool check_valid_str(const std::string& message , std::string& expectedOutput);
-	static bool check_invalid_var_names();
-	static bool check_invalid_var();
-	static bool check_no_error();
-	static bool check_redefinitions();
+
+	bool flush_buffer();
+	bool check_indentation();
+	bool check_spaced_input(const std::string& message);
+	bool check_empty();
+	bool check_quit();
+	bool check_bool();
+	bool check_int();
+	bool check_str();
+	bool check_correct_var_assignment();
+
+	bool check_valid_bool();
+	bool check_unvalid_bool();
+	bool check_str_syntax_error(const std::string& str);
+	bool check_valid_str(const std::string& message , std::string& expectedOutput);
+	bool check_invalid_var_names();
+	bool check_invalid_var();
+	bool check_no_error();
+	bool check_redefinitions();
 
 
 };

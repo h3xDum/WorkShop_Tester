@@ -9,35 +9,43 @@
 #define SPACE " \n" // the new line is to ensure std::getline() on the interpreter will work correctly 
 #define TAB   "\t\n"
 
-// static variabels 
-HANDLE Tester::_hChildStdOutRead, Tester::_hChildStdOutWrite;
-HANDLE Tester::_hChildStdInWrite, Tester::_hChildStdInRead;
-STARTUPINFOA Tester::_si;
-PROCESS_INFORMATION Tester::_pi;
-
-
-void Tester::run_tests(const std::string& filePath) {
-
-	Tester::init_communication(filePath);
-	if (!Tester::test_part_1()) {
-		std::cout << "[!] Part 1 failed :( " << std::endl;
-		return;
-	}
-
-	Tester::init_communication(filePath);
-	if (!Tester::test_part_2()) {
-		std::cout << "[!] Part 2 failed :( " << std::endl;
-		return;
-	}
+Tester::Tester(const std::string& filePath) : _hChildStdOutRead(nullptr), _hChildStdOutWrite(nullptr),
+				   _hChildStdInWrite(nullptr), _hChildStdInRead(nullptr),
+				   _si({0}), _pi({0}), _filePath(filePath) {
 	
-	if (!Tester::test_part_3()) {
-		std::cout << "[!] Part 3 failed :( " << std::endl;
-		return;
+	// assign all the tests
+	_generalTests.push_back(&Tester::test_part_1);
+	_generalTests.push_back(&Tester::test_part_2);
+	_generalTests.push_back(&Tester::test_part_3);
+
+	_part1Tests.push_back(&Tester::flush_buffer);
+	_part1Tests.push_back(&Tester::check_indentation);
+	_part1Tests.push_back(&Tester::check_empty);
+	_part1Tests.push_back(&Tester::check_quit);
+
+	_part2Tests.push_back(&Tester::flush_buffer);
+	_part2Tests.push_back(&Tester::check_bool);
+	_part2Tests.push_back(&Tester::check_int);
+	_part2Tests.push_back(&Tester::check_str);
+
+	_part3Tests.push_back(&Tester::check_invalid_var_names);
+	_part3Tests.push_back(&Tester::check_no_error);
+	_part3Tests.push_back(&Tester::check_redefinitions);
+	_part3Tests.push_back(&Tester::check_correct_var_assignment);
+
+
+}
+
+Tester::~Tester() {
+	Tester::cleanup();
+}
+
+void Tester::run_tests() {
+	for (auto& test : _generalTests) {
+		if (!(this->*test)()) {
+			break;
+		}
 	}
-
-	
-
-
 }
 
 void Tester::init_pipes() {
@@ -63,7 +71,7 @@ void Tester::init_pipes() {
 
 }
 
-void Tester::init_process(const std::string& filePath) {
+void Tester::init_process() {
 	// Creates the mython interpreter process 
 	ZeroMemory(&_si, sizeof(_si));
 	ZeroMemory(&_pi, sizeof(_pi));
@@ -74,7 +82,7 @@ void Tester::init_process(const std::string& filePath) {
 	_si.hStdOutput = _hChildStdOutWrite; // Redirect child STDOUT
 
 
-	if (!CreateProcessA(filePath.c_str(), nullptr, nullptr, nullptr, true, 0, nullptr, nullptr, &_si, &_pi)) {
+	if (!CreateProcessA(_filePath.c_str(), nullptr, nullptr, nullptr, true, 0, nullptr, nullptr, &_si, &_pi)) {
 		throw std::runtime_error("[!] Failed to Create child process, check input file path.");
 	}
 
@@ -87,67 +95,50 @@ void Tester::init_process(const std::string& filePath) {
 
 }
 
-void Tester::init_communication(const std::string& filePath) {
+void Tester::init_communication() {
 	// clean prev connection handles, Requierd duo to Part 1 tests closing the connection on "quit()"
 	Tester::cleanup();
 	// init connection again 
 	Tester::init_pipes();
-	Tester::init_process(filePath);
+	Tester::init_process();
 }
 
 bool Tester::test_part_1() {
-
 	std::cout << "Testing Part 1: " << std::endl;
-	// dont care about the "Welcome to Magshimim Python Interperter" message on start 
-	if (!Tester::flush_buffer()) {
-		std::cout << "Didnt print nothing at the start of executaion?" << std::endl;
-		return false;
-	}
+	Tester::init_communication();
 
-	// Basic functionality tests
-	if (!Tester::check_indentation(SPACE) || !Tester::check_indentation(TAB) || !Tester::check_empty()) {
-		std::cout << "[!] Test Failed" << std::endl;
-		return false;
+	for (auto& test : _part1Tests) {
+		if (!(this->*test)()) {
+			std::cout << "[!] Test Failed" << std::endl;
+			return false;
+		}
 	}
-
-	if (!Tester::check_quit()) {
-		std::cout << "[!] Test Failed" << std::endl;
-		return false;
-	}
-
 	std::cout << "\n[+] Part 1 Passed , congrats !\n" << std::endl;
 	return true;
 }
 
 bool Tester::test_part_2() {
-
 	std::cout << "Testing Part 2: " << std::endl;
-	// dont care about the "Welcome to Magshimim Python Interperter" message on start 
-	if (!Tester::flush_buffer()) {
-		std::cout << "Didnt print nothing at the start of executaion?" << std::endl;
-		return false;
+	Tester::init_communication();
+
+	for (auto& test : _part2Tests) {
+		if (!(this->*test)()) {
+			std::cout << "[!] Test Failed" << std::endl;
+			return false;
+		}
 	}
-
-	// Basic functionality tests
-	if (!Tester::check_bool() || !Tester::check_int() || !Tester::check_str()) {
-		std::cout << "[!] Test Failed" << std::endl;
-		return false;
-	}
-
-
 	std::cout << "\n[+] Part 2 Passed , congrats !\n" << std::endl;
 	return true;
 }
 
 bool Tester::test_part_3() {
 	std::cout << "Testing Part 3: " << std::endl;
-
-	if (!Tester::check_invalid_var_names() || !Tester::check_no_error() ||
-		!Tester::check_redefinitions() || !Tester::check_correct_var_assignment()) {
-		std::cout << "[!] Test Failed" << std::endl;
-		return false;
+	for (auto& test : _part3Tests) {
+		if (!(this->*test)()) {
+			std::cout << "[!] Test Failed" << std::endl;
+			return false;
+		}
 	}
-
 	std::cout << "\n[+] Part 3 Passed , congrats !\n" << std::endl;
 	return true;
 }
@@ -182,7 +173,14 @@ bool Tester::check_quit() {
 
 }
 
-bool Tester::check_indentation(const std::string& message) {
+bool Tester::check_indentation() {
+	if (!Tester::check_spaced_input(SPACE) || !Tester::check_spaced_input(TAB)) {
+		return false;
+	}
+	return true;
+}
+
+bool Tester::check_spaced_input(const std::string& message) {
 	std::cout << " - Testing for indentation error on " << ((message == SPACE) ? "SPACE\n" : "TAB\n");
 
 	// Send payload to stdin
