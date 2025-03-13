@@ -9,8 +9,8 @@ int main(int argc, char* argv[]) {
 		return 0;
 	}
 	try {
-		Tester t;
-		t.run_tests(argv[1]);
+		Tester t(argv[1]);
+		t.run_tests();
 	}
 	catch (const std::exception& e) {
 		std::cerr << e.what();
