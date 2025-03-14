@@ -28,12 +28,12 @@ Tester::Tester(const std::string& filePath) : _hChildStdOutRead(nullptr), _hChil
 	_part2Tests.push_back(&Tester::check_int);
 	_part2Tests.push_back(&Tester::check_str);
 
-	_part3Tests.push_back(&Tester::check_invalid_var_names);
-	_part3Tests.push_back(&Tester::check_no_error);
-	_part3Tests.push_back(&Tester::check_redefinitions);
-	_part3Tests.push_back(&Tester::check_correct_var_assignment);
+	_part3Tests.push_back(&Tester::check_valid_var_assignment); 
+	_part3Tests.push_back(&Tester::check_invalid_var_names); 
+	_part3Tests.push_back(&Tester::check_redefinitions); 
+	_part3Tests.push_back(&Tester::check_undefined_var); 
 
-
+	
 }
 
 Tester::~Tester() {
@@ -338,12 +338,12 @@ bool Tester::check_invalid_var_names() {
 			return false;
 		}
 	}
+
 	std::cout << "   [+] Test Passed " << std::endl;
 	return true;
 }
 
 bool Tester::check_no_error() {
-	std::cout << " - Testing for valid variable names" << std::endl;
 
 	std::vector<std::string> messages = { "a1 = 100\n", "a2 = True\n", "a123 = 'bbb'\n", "a_b = 200\n", "a_3b = 25\n", "_a = 5\n"};
 	DWORD numOfBytesWritten;
@@ -370,26 +370,248 @@ bool Tester::check_no_error() {
 			return false;
 		}
 	}
-	std::cout << "   [+] Test Passed " << std::endl;
+
 	return true;
 	
 }
 
 bool Tester::check_redefinitions() {
 	
+	std::cout << " - Testing variables redefinitions " << std::endl;
+	if (!Tester::check_basics_redefs() || !Tester::check_var_to_var_defs()) {
+		std::cout << "[!] Test failed" << std::endl;
+		return false;
+	}
+
+	std::cout << "   [+] Test Passed " << std::endl;
 	return true;
 }
 
-bool Tester::check_correct_var_assignment() {
+bool Tester::check_basics_redefs() {
+	std::multimap<const std::string, const std::string> vars = { {"a", "100"},
+		{"a", "True"},
+		{"b", "25"},
+		{"b", "False"} };
+
+	std::string msg;
+	DWORD numOfBytesWritten;
+	DWORD numOfBytesRead;
+	char buff[BUFFER_SIZE];
+	for (auto it = vars.begin(); it != vars.end(); it++) {
+		// create the variables for the interprester
+		msg = it->first + " = " + it->second + "\n";
+		if (!WriteFile(_hChildStdInWrite, msg.c_str(), DWORD(strlen(msg.c_str())), &numOfBytesWritten, nullptr)) {
+			std::cerr << "[!] Failed to Write input to the workshop interpreter stdin" << std::endl;
+			return false;
+		}
+		Tester::flush_buffer();
+
+		// check correct assignment
+		msg = it->second + "\r\n>>> ";
+		if (!WriteFile(_hChildStdInWrite, msg.c_str(), DWORD(strlen(msg.c_str())), &numOfBytesWritten, nullptr)) {
+			std::cerr << "[!] Failed to Write input to the workshop interpreter stdin" << std::endl;
+			return false;
+		}
+		std::this_thread::sleep_for(std::chrono::milliseconds(150));
+		if (!ReadFile(_hChildStdOutRead, buff, sizeof(buff) - 1, &numOfBytesRead, nullptr)) {
+			std::cerr << "[!] Failed to read from the workshop interpreter stdout " << std::endl;
+			return false;
+		}
+		buff[numOfBytesRead] = '\0';
+		// build the full expected output
+		std::string expectedOutput(it->second + "\r\n>>> ");
+		if (expectedOutput != buff) {
+			std::cout << "For input: " << it->first << std::endl;
+			std::cout << "Expected:\n" << expectedOutput <<
+				"\nGot:\n" << buff << std::endl;
+			return false;
+		}
+	}
+	std::cout << "    * basic redefs passed " << std::endl;
+	return true;
+}
+
+bool Tester::check_var_to_var_defs() {
+	std::string msg;
+	DWORD numOfBytesWritten;
+	DWORD numOfBytesRead;
+	char buff[BUFFER_SIZE];
+
+	// assigning vars values
+	msg = "a = True\n";
+	if (!WriteFile(_hChildStdInWrite, msg.c_str(), DWORD(strlen(msg.c_str())), &numOfBytesWritten, nullptr)) {
+		std::cerr << "[!] Failed to Write input to the workshop interpreter stdin" << std::endl;
+		return false;
+	}
+	Tester::flush_buffer();
+	msg = "b = 25\n";
+	if (!WriteFile(_hChildStdInWrite, msg.c_str(), DWORD(strlen(msg.c_str())), &numOfBytesWritten, nullptr)) {
+		std::cerr << "[!] Failed to Write input to the workshop interpreter stdin" << std::endl;
+		return false;
+	}
+	Tester::flush_buffer();
+
+	// assign var to var value
+	msg = "a = b\n";
+	if (!WriteFile(_hChildStdInWrite, msg.c_str(), DWORD(strlen(msg.c_str())), &numOfBytesWritten, nullptr)) {
+		std::cerr << "[!] Failed to Write input to the workshop interpreter stdin" << std::endl;
+		return false;
+	}
+	Tester::flush_buffer();
+	// check a & b 
+	msg = "a\n";
+	if (!WriteFile(_hChildStdInWrite, msg.c_str(), DWORD(strlen(msg.c_str())), &numOfBytesWritten, nullptr)) {
+		std::cerr << "[!] Failed to Write input to the workshop interpreter stdin" << std::endl;
+		return false;
+	}
+	std::this_thread::sleep_for(std::chrono::milliseconds(150));
+	if (!ReadFile(_hChildStdOutRead, buff, sizeof(buff) - 1, &numOfBytesRead, nullptr)) {
+		std::cerr << "[!] Failed to read from the workshop interpreter stdout " << std::endl;
+		return false;
+	}
+	buff[numOfBytesRead] = '\0';
+	if (strcmp(buff, "25\r\n>>> ") != 0) {
+		std::cout << "For input: " << msg << std::endl;
+		std::cout << "Expected:\n" << "25" <<
+			"\nGot:\n" << buff << std::endl;
+		return false;
+	}
+
+	msg = "b\n";
+	if (!WriteFile(_hChildStdInWrite, msg.c_str(), DWORD(strlen(msg.c_str())), &numOfBytesWritten, nullptr)) {
+		std::cerr << "[!] Failed to Write input to the workshop interpreter stdin" << std::endl;
+		return false;
+	}
+	std::this_thread::sleep_for(std::chrono::milliseconds(150));
+	if (!ReadFile(_hChildStdOutRead, buff, sizeof(buff) - 1, &numOfBytesRead, nullptr)) {
+		std::cerr << "[!] Failed to read from the workshop interpreter stdout " << std::endl;
+		return false;
+	}
+	buff[numOfBytesRead] = '\0';
+	if (strcmp(buff, "25\r\n>>> ") != 0) {
+		std::cout << "For input: " << msg << std::endl;
+		std::cout << "Expected:\n" << "25" <<
+			"\nGot:\n" << buff << std::endl;
+		return false;
+	}
 	
+	std::cout << "    * var to var defs passed" << std::endl;
 	return true;
 }
 
-bool Tester::check_invalid_var() {
+bool Tester::check_valid_var_assignment() {
+	std::cout << " - Testing valid variable assignments " << std::endl;
+	if (!Tester::check_no_error()) {
+		return false;
+	}
 
+	std::map<std::string, std::string> vars = { {"a1", "5"},
+		{"a2", "        False"},
+		{"a123", "'check this'"}};
+	
+	// send the message
+	DWORD numOfBytesWritten;
+	for (auto it = vars.begin(); it != vars.end(); it++) {
+		// create the variables for the interprester
+		std::string msg(it->first + " = " + it->second + "\n");;
+		if (!WriteFile(_hChildStdInWrite, msg.c_str(), DWORD(strlen(msg.c_str())), &numOfBytesWritten, nullptr)) {
+			std::cerr << "[!] Failed to Write input to the workshop interpreter stdin" << std::endl;
+			return false;
+		}
+		Tester::flush_buffer();
+	}
+	// check the output
+	DWORD numOfBytesRead;
+	char buff[BUFFER_SIZE];
+	for (auto it = vars.begin(); it != vars.end(); it++) {
+		// check the var values from the interpreter
+		std::string msg(it->first + "\n");
+		if (!WriteFile(_hChildStdInWrite, msg.c_str(), DWORD(strlen(msg.c_str())), &numOfBytesWritten, nullptr)) {
+			std::cerr << "[!] Failed to Write input to the workshop interpreter stdin" << std::endl;
+			return false;
+		}
+		std::this_thread::sleep_for(std::chrono::milliseconds(150));
+		if (!ReadFile(_hChildStdOutRead, buff, sizeof(buff) - 1, &numOfBytesRead, nullptr)) {
+			std::cerr << "[!] Failed to read from the workshop interpreter stdout " << std::endl;
+			return false;
+		}
+		buff[numOfBytesRead] = '\0';
+		// build the full expected output
+		it->second = it->second.substr(it->second.find_first_not_of(" ")); // trim the leadin space on a2 value
+		std::string expectedOutput(it->second + "\r\n>>> ");
+		if (expectedOutput != buff) {
+			std::cout << "For input: " << it->first << std::endl;
+			std::cout << "Expected:\n" << expectedOutput <<
+				"\nGot:\n" << buff << std::endl;
+			return false;
+		}
+	}
+
+
+	std::cout << "   [+] Test Passed " << std::endl;
 	return true;
-}
+} 
 
+bool Tester::check_undefined_var() {
+	std::cout << " - Testing undefined variables " << std::endl;
+	std::string msg;
+	std::string expectedError;
+	char buff[BUFFER_SIZE];
+	DWORD numOfBytesRead;
+	DWORD numOfBytesWritten;
+
+	// send undefined variable
+	msg = "z\n";
+	if (!WriteFile(_hChildStdInWrite, msg.c_str(), DWORD(strlen(msg.c_str())), &numOfBytesWritten, nullptr)) {
+		std::cerr << "[!] Failed to Write input to the workshop interpreter stdin" << std::endl;
+		return false;
+	}
+	std::this_thread::sleep_for(std::chrono::milliseconds(150));
+	if (!ReadFile(_hChildStdOutRead, buff, sizeof(buff) - 1, &numOfBytesRead, nullptr)) {
+		std::cerr << "[!] Failed to read from the workshop interpreter stdout " << std::endl;
+		return false;
+	}
+	buff[numOfBytesRead] = '\0';
+	
+	// validate a name error response
+	expectedError = NAME_ERROR_EXCEPTION;
+	expectedError.append("'z' is not defined\r\n>>> ");
+	if (strcmp(expectedError.c_str(), buff) != 0) {
+		std::cout << "Expected:\n" << expectedError << "Got:\n" << buff << std::endl;
+		return false;
+	}
+
+	// assign to a non existent var
+	msg = "z=3\n";
+	if (!WriteFile(_hChildStdInWrite, msg.c_str(), DWORD(strlen(msg.c_str())), &numOfBytesWritten, nullptr)) {
+		std::cerr << "[!] Failed to Write input to the workshop interpreter stdin" << std::endl;
+		return false;
+	}
+	Tester::flush_buffer();
+	msg = "z = x\n";
+	if (!WriteFile(_hChildStdInWrite, msg.c_str(), DWORD(strlen(msg.c_str())), &numOfBytesWritten, nullptr)) {
+		std::cerr << "[!] Failed to Write input to the workshop interpreter stdin" << std::endl;
+		return false;
+	}
+	std::this_thread::sleep_for(std::chrono::milliseconds(150));
+	if (!ReadFile(_hChildStdOutRead, buff, sizeof(buff) - 1, &numOfBytesRead, nullptr)) {
+		std::cerr << "[!] Failed to read from the workshop interpreter stdout " << std::endl;
+		return false;
+	}
+	buff[numOfBytesRead] = '\0';
+	// validate error message
+	expectedError = NAME_ERROR_EXCEPTION;
+	expectedError.append("'x' is not defined\r\n>>> ");
+	if (strcmp(expectedError.c_str(), buff) != 0) {
+		std::cout << "Expected:\n" << expectedError << "Got:\n" << buff << std::endl;
+		return false;
+	}
+
+
+	std::cout << "   [+] Test Passed " << std::endl;
+	return true;
+
+}
 
 // General helper functions
 bool Tester::flush_buffer() {
@@ -472,15 +694,15 @@ bool Tester::check_unvalid_bool() {
 	buff[numsOfBytesRead] = '\0';
 
 	// Compare with expected output
-	std::string error_message(buff);
-	if (error_message != SYNTAX_EXCEPTION_MESSAGE) {
+	std::string errorMessage(buff);
+	if (errorMessage != SYNTAX_EXCEPTION_MESSAGE) {
 		// might have part 3 completed hence a name error exception
-		if (error_message.find(NAME_ERROR_EXCEPTION) == 0) {  // Check if starts with "NameError : name "
-			std::string expected_error = "'true' is not defined\r\n>>> ";
-			std::string substring = error_message.substr(NAME_ERROR_END_INDEX);
-			substring.erase(substring.begin()); // trim space from the beggining
-			if (substring != expected_error) {
-				std::cout << "Expected:\n" << NAME_ERROR_EXCEPTION + expected_error << "\nGot:\n" << error_message << std::endl;
+		if (errorMessage.find(NAME_ERROR_EXCEPTION) == 0) {  // Check if starts with "NameError : name "
+			// build expcected error 
+			std::string expectedError = NAME_ERROR_EXCEPTION;
+			expectedError.append("'true' is not defined\r\n>>> ");
+			if (errorMessage != expectedError) {
+				std::cout << "Expected:\n" << expectedError << "\nGot:\n" << errorMessage << std::endl;
 				return false;
 			}
 		}
@@ -504,16 +726,15 @@ bool Tester::check_unvalid_bool() {
 	buff[numsOfBytesRead] = '\0';
 
 	// Compare with expected output
-	error_message = buff;
-	if (error_message != SYNTAX_EXCEPTION_MESSAGE) {
+	errorMessage = buff;
+	if (errorMessage != SYNTAX_EXCEPTION_MESSAGE) {
 		// might have part 3 completed hence a name error exception
-		if (error_message.find(NAME_ERROR_EXCEPTION) == 0) {  // Check if starts with "NameError : name "
-			// build the end of the expected error
-			std::string expected_error = "'false' is not defined\r\n>>> ";
-			std::string substring = error_message.substr(NAME_ERROR_END_INDEX);
-			substring.erase(substring.begin()); // trim space from the beggining
-			if (substring != expected_error) {
-				std::cout << "Expected:\n" << NAME_ERROR_EXCEPTION + expected_error << "\nGot:\n" << error_message << std::endl;
+		if (errorMessage.find(NAME_ERROR_EXCEPTION) == 0) {  // Check if starts with "NameError : name "
+			// build expected error
+			std::string expectedError = NAME_ERROR_EXCEPTION;
+			expectedError.append("'false' is not defined\r\n>>> ");
+			if (expectedError != errorMessage) {
+				std::cout << "Expected:\n" << expectedError << "\nGot:\n" << errorMessage << std::endl;
 				return false;
 			}
 		}
