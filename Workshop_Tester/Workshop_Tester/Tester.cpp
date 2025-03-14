@@ -555,6 +555,7 @@ bool Tester::check_valid_var_assignment() {
 bool Tester::check_undefined_var() {
 	std::cout << " - Testing undefined variables " << std::endl;
 	std::string msg;
+	std::string expectedError;
 	char buff[BUFFER_SIZE];
 	DWORD numOfBytesRead;
 	DWORD numOfBytesWritten;
@@ -570,8 +571,44 @@ bool Tester::check_undefined_var() {
 		std::cerr << "[!] Failed to read from the workshop interpreter stdout " << std::endl;
 		return false;
 	}
-	// validate a name error response
+	buff[numOfBytesRead] = '\0';
 	
+	// validate a name error response
+	expectedError = NAME_ERROR_EXCEPTION;
+	expectedError.append("'z' is not defined\r\n>>> ");
+	if (strcmp(expectedError.c_str(), buff) != 0) {
+		std::cout << "Expected:\n" << expectedError << "Got:\n" << buff << std::endl;
+		return false;
+	}
+
+	// assign to a non existent var
+	msg = "z=3\n";
+	if (!WriteFile(_hChildStdInWrite, msg.c_str(), DWORD(strlen(msg.c_str())), &numOfBytesWritten, nullptr)) {
+		std::cerr << "[!] Failed to Write input to the workshop interpreter stdin" << std::endl;
+		return false;
+	}
+	Tester::flush_buffer();
+	msg = "z = x\n";
+	if (!WriteFile(_hChildStdInWrite, msg.c_str(), DWORD(strlen(msg.c_str())), &numOfBytesWritten, nullptr)) {
+		std::cerr << "[!] Failed to Write input to the workshop interpreter stdin" << std::endl;
+		return false;
+	}
+	std::this_thread::sleep_for(std::chrono::milliseconds(150));
+	if (!ReadFile(_hChildStdOutRead, buff, sizeof(buff) - 1, &numOfBytesRead, nullptr)) {
+		std::cerr << "[!] Failed to read from the workshop interpreter stdout " << std::endl;
+		return false;
+	}
+	buff[numOfBytesRead] = '\0';
+	// validate error message
+	expectedError = NAME_ERROR_EXCEPTION;
+	expectedError.append("'x' is not defined\r\n>>> ");
+	if (strcmp(expectedError.c_str(), buff) != 0) {
+		std::cout << "Expected:\n" << expectedError << "Got:\n" << buff << std::endl;
+		return false;
+	}
+
+
+	std::cout << "   [+] Test Passed " << std::endl;
 	return true;
 
 }
@@ -661,6 +698,7 @@ bool Tester::check_unvalid_bool() {
 	if (errorMessage != SYNTAX_EXCEPTION_MESSAGE) {
 		// might have part 3 completed hence a name error exception
 		if (errorMessage.find(NAME_ERROR_EXCEPTION) == 0) {  // Check if starts with "NameError : name "
+			// build expcected error 
 			std::string expectedError = NAME_ERROR_EXCEPTION;
 			expectedError.append("'true' is not defined\r\n>>> ");
 			if (errorMessage != expectedError) {
@@ -692,12 +730,11 @@ bool Tester::check_unvalid_bool() {
 	if (errorMessage != SYNTAX_EXCEPTION_MESSAGE) {
 		// might have part 3 completed hence a name error exception
 		if (errorMessage.find(NAME_ERROR_EXCEPTION) == 0) {  // Check if starts with "NameError : name "
-			// build the end of the expected error
-			std::string expected_error = "'false' is not defined\r\n>>> ";
-			std::string substring = errorMessage.substr(NAME_ERROR_END_INDEX);
-			substring.erase(substring.begin()); // trim space from the beggining
-			if (substring != expected_error) {
-				std::cout << "Expected:\n" << NAME_ERROR_EXCEPTION + expected_error << "\nGot:\n" << errorMessage << std::endl;
+			// build expected error
+			std::string expectedError = NAME_ERROR_EXCEPTION;
+			expectedError.append("'false' is not defined\r\n>>> ");
+			if (expectedError != errorMessage) {
+				std::cout << "Expected:\n" << expectedError << "\nGot:\n" << errorMessage << std::endl;
 				return false;
 			}
 		}
