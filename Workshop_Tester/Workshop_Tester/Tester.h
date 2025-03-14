@@ -56,12 +56,11 @@ private:
 	bool check_str_syntax_error(const std::string& str);
 	bool check_valid_str(const std::string& message , std::string& expectedOutput);
 	bool check_invalid_var_names();
-	bool check_invalid_var();
 	bool check_no_error();
 	bool check_redefinitions();
 	bool check_basics_redefs();
 	bool check_var_to_var_defs();
-
+	bool check_undefined_var();
 
 };
 
