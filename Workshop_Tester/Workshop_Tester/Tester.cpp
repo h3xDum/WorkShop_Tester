@@ -268,7 +268,7 @@ bool Tester::check_str() {
 	}
 
 	// Test for valid inputs
-	std::unordered_map<std::string, std::string> validStrings = { {"\"Blabla\"\n" , "'Blabla'"},
+	std::map<std::string, std::string> validStrings = { {"\"Blabla\"\n" , "'Blabla'"},
 		 { "'foo foo'\n" , "'foo foo'"},
 		 {"\"Bla'Foo\"\n" , "\"Bla'Foo\""},
 		 {"\"asf'ss'asf\"\n", "\"asf'ss'asf\""}
@@ -363,7 +363,7 @@ bool Tester::check_redefinitions() {
 }
 
 bool Tester::check_basics_redefs() {
-	std::unordered_multimap<const std::string, const std::string> vars = { {"a", "100"},
+	std::multimap<const std::string, const std::string> vars = { {"a", "100"},
 		{"a", "True"},
 		{"b", "25"},
 		{"b", "False"} };
@@ -480,7 +480,7 @@ bool Tester::check_valid_var_assignment() {
 		return false;
 	}
 
-	std::unordered_map<std::string, std::string> vars = { {"a1", "5"},
+	std::map<std::string, std::string> vars = { {"a1", "5"},
 		{"a2", "        False"},
 		{"a123", "'check this'"}};
 	
