@@ -9,11 +9,12 @@
 #define SPACE " \n" // the new line is to ensure std::getline() on the interpreter will work correctly 
 #define TAB   "\t\n"
 
+// API
 Tester::Tester(const std::string& filePath) : _hChildStdOutRead(nullptr), _hChildStdOutWrite(nullptr),
 				   _hChildStdInWrite(nullptr), _hChildStdInRead(nullptr),
 				   _si({0}), _pi({0}), _filePath(filePath) {
 	
-	// assign all the tests
+	// assigning all the tests
 	_generalTests.push_back(&Tester::test_part_1);
 	_generalTests.push_back(&Tester::test_part_2);
 	_generalTests.push_back(&Tester::test_part_3);
@@ -33,7 +34,6 @@ Tester::Tester(const std::string& filePath) : _hChildStdOutRead(nullptr), _hChil
 	_part3Tests.push_back(&Tester::check_redefinitions); 
 	_part3Tests.push_back(&Tester::check_undefined_var); 
 
-	
 }
 
 Tester::~Tester() {
@@ -41,6 +41,7 @@ Tester::~Tester() {
 }
 
 void Tester::run_tests() {
+	// running part 1/2/3 tests 
 	for (auto& test : _generalTests) {
 		if (!(this->*test)()) {
 			break;
@@ -48,6 +49,8 @@ void Tester::run_tests() {
 	}
 }
 
+
+// Communication pipelines
 void Tester::init_pipes() {
 
 	SECURITY_ATTRIBUTES sa;
@@ -89,7 +92,7 @@ void Tester::init_process() {
 	// those pipe ends wont be used
 	CloseHandle(_hChildStdInRead);
 	CloseHandle(_hChildStdOutWrite);
-	// prevent exception on double close at Tester::clean()
+	// prevent exception on double close at Tester::cleanup()
 	_hChildStdInRead = nullptr;
 	_hChildStdOutWrite = nullptr;
 
@@ -103,10 +106,13 @@ void Tester::init_communication() {
 	Tester::init_process();
 }
 
+
+// General test calling functions
 bool Tester::test_part_1() {
 	std::cout << "Testing Part 1: " << std::endl;
 	Tester::init_communication();
 
+	// running all the part 1 tests 
 	for (auto& test : _part1Tests) {
 		if (!(this->*test)()) {
 			std::cout << "[!] Test Failed" << std::endl;
@@ -121,6 +127,7 @@ bool Tester::test_part_2() {
 	std::cout << "Testing Part 2: " << std::endl;
 	Tester::init_communication();
 
+	// running all the part 2 tests
 	for (auto& test : _part2Tests) {
 		if (!(this->*test)()) {
 			std::cout << "[!] Test Failed" << std::endl;
@@ -133,6 +140,7 @@ bool Tester::test_part_2() {
 
 bool Tester::test_part_3() {
 	std::cout << "Testing Part 3: " << std::endl;
+	// running all the part 3 tests 
 	for (auto& test : _part3Tests) {
 		if (!(this->*test)()) {
 			std::cout << "[!] Test Failed" << std::endl;
@@ -144,7 +152,7 @@ bool Tester::test_part_3() {
 }
 
 
-// Part 1 Tests functions
+// Part 1 Tests 
 bool Tester::check_quit() {
 	std::cout << " - Testing quit() functionality" << std::endl;
 
@@ -178,39 +186,6 @@ bool Tester::check_indentation() {
 		return false;
 	}
 	return true;
-}
-
-bool Tester::check_spaced_input(const std::string& message) {
-	std::cout << " - Testing for indentation error on " << ((message == SPACE) ? "SPACE\n" : "TAB\n");
-
-	// Send payload to stdin
-	DWORD numOfBytesWritten;
-	if (!WriteFile(_hChildStdInWrite, message.c_str(), DWORD(strlen(message.c_str())), &numOfBytesWritten, nullptr)) {
-		std::cerr << "[!] Failed to Write input to the workshop interpreter stdin" << std::endl;
-		return false;
-	}
-
-	// Read response
-	char buffer[INDENTATION_EXCEPTION_SIZE] = { 0 };
-	DWORD numOfBytesRead;
-	std::this_thread::sleep_for(std::chrono::milliseconds(150));
-	if (!ReadFile(_hChildStdOutRead, buffer, sizeof(buffer) - 1, &numOfBytesRead, nullptr)) {
-		std::cerr << "[!] Failed to read from the workshop interpreter stdout" << std::endl;
-		return false;
-	}
-	buffer[numOfBytesRead] = '\0';
-
-
-	// Cmp 
-	if (strcmp(buffer, INDENTATION_EXCEPTION_MESSAGE) != 0) {
-		std::cout << "Expected:\nIndentationError: unexpected indent\n>>> " <<
-			"\nGot:\n" << buffer << std::endl;
-		return false;
-	}
-
-	std::cout << "   [+] -> Test Passed" << std::endl;
-	return true;
-
 }
 
 bool Tester::check_empty() {
@@ -293,7 +268,7 @@ bool Tester::check_str() {
 	}
 
 	// Test for valid inputs
-	std::map<std::string, std::string> validStrings = { {"\"Blabla\"\n" , "'Blabla'"},
+	std::unordered_map<std::string, std::string> validStrings = { {"\"Blabla\"\n" , "'Blabla'"},
 		 { "'foo foo'\n" , "'foo foo'"},
 		 {"\"Bla'Foo\"\n" , "\"Bla'Foo\""},
 		 {"\"asf'ss'asf\"\n", "\"asf'ss'asf\""}
@@ -388,7 +363,7 @@ bool Tester::check_redefinitions() {
 }
 
 bool Tester::check_basics_redefs() {
-	std::multimap<const std::string, const std::string> vars = { {"a", "100"},
+	std::unordered_multimap<const std::string, const std::string> vars = { {"a", "100"},
 		{"a", "True"},
 		{"b", "25"},
 		{"b", "False"} };
@@ -505,7 +480,7 @@ bool Tester::check_valid_var_assignment() {
 		return false;
 	}
 
-	std::map<std::string, std::string> vars = { {"a1", "5"},
+	std::unordered_map<std::string, std::string> vars = { {"a1", "5"},
 		{"a2", "        False"},
 		{"a123", "'check this'"}};
 	
@@ -613,7 +588,8 @@ bool Tester::check_undefined_var() {
 
 }
 
-// General helper functions
+
+// General helper functions/subtests
 bool Tester::flush_buffer() {
 	char buffer[BUFFER_SIZE];
 	DWORD numOfBytesRead;
@@ -624,6 +600,39 @@ bool Tester::flush_buffer() {
 		std::cerr << "[!] Failed to read from the workshop interpreter stdout " << std::endl;
 		return false;
 	}
+	return true;
+
+}
+
+bool Tester::check_spaced_input(const std::string& message) {
+	std::cout << " - Testing for indentation error on " << ((message == SPACE) ? "SPACE\n" : "TAB\n");
+
+	// Send payload to stdin
+	DWORD numOfBytesWritten;
+	if (!WriteFile(_hChildStdInWrite, message.c_str(), DWORD(strlen(message.c_str())), &numOfBytesWritten, nullptr)) {
+		std::cerr << "[!] Failed to Write input to the workshop interpreter stdin" << std::endl;
+		return false;
+	}
+
+	// Read response
+	char buffer[INDENTATION_EXCEPTION_SIZE] = { 0 };
+	DWORD numOfBytesRead;
+	std::this_thread::sleep_for(std::chrono::milliseconds(150));
+	if (!ReadFile(_hChildStdOutRead, buffer, sizeof(buffer) - 1, &numOfBytesRead, nullptr)) {
+		std::cerr << "[!] Failed to read from the workshop interpreter stdout" << std::endl;
+		return false;
+	}
+	buffer[numOfBytesRead] = '\0';
+
+
+	// Cmp 
+	if (strcmp(buffer, INDENTATION_EXCEPTION_MESSAGE) != 0) {
+		std::cout << "Expected:\nIndentationError: unexpected indent\n>>> " <<
+			"\nGot:\n" << buffer << std::endl;
+		return false;
+	}
+
+	std::cout << "   [+] -> Test Passed" << std::endl;
 	return true;
 
 }
