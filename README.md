@@ -7,7 +7,7 @@ functionality before progressing to the next section.
 
 ## Usage
 ```sh
-.\Workshop_Tester.exe Path_To_Interpreter
+.\Workshop_Tester.exe Path_To_Interpreter.exe
 ```
 
 Example\
