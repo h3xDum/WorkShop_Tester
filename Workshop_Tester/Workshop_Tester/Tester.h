@@ -24,7 +24,8 @@ private:
 	// intrepreter process structures 
 	STARTUPINFOA _si;
 	PROCESS_INFORMATION _pi;
-	std::string _filePath; // path to the interpreter exe 
+	std::string _filePath; // path to the interpreter exe
+	HANDLE _hConsole; // for colored text prints 
 	
 	// test vectors for organization and easy expansion 
 	using testFunction = bool (Tester::*)();

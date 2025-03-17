@@ -8,11 +8,17 @@
 #define NAME_ERROR_EXCEPTION "NameError : name " 
 #define SPACE " \n" // the new line is to ensure std::getline() on the interpreter will work correctly 
 #define TAB   "\t\n"
+#define RED 12
+#define GREEN 2
+#define WHITE 15
 
 // API
 Tester::Tester(const std::string& filePath) : _hChildStdOutRead(nullptr), _hChildStdOutWrite(nullptr),
 				   _hChildStdInWrite(nullptr), _hChildStdInRead(nullptr),
-				   _si({0}), _pi({0}), _filePath(filePath) {
+				   _si({0}), _pi({0}), _filePath(filePath), _hConsole(GetStdHandle(STD_OUTPUT_HANDLE)) {
+	
+	// set text color 
+	SetConsoleTextAttribute(_hConsole, WHITE);
 	
 	// assigning all the tests
 	_generalTests.push_back(&Tester::test_part_1);
@@ -115,11 +121,16 @@ bool Tester::test_part_1() {
 	// running all the part 1 tests 
 	for (auto& test : _part1Tests) {
 		if (!(this->*test)()) {
+			SetConsoleTextAttribute(_hConsole, RED);
 			std::cout << "[!] Test Failed" << std::endl;
+			SetConsoleTextAttribute(_hConsole, WHITE);
 			return false;
 		}
 	}
+	
+	SetConsoleTextAttribute(_hConsole, GREEN);
 	std::cout << "\n[+] Part 1 Passed , congrats !\n" << std::endl;
+	SetConsoleTextAttribute(_hConsole, WHITE);
 	return true;
 }
 
@@ -130,11 +141,16 @@ bool Tester::test_part_2() {
 	// running all the part 2 tests
 	for (auto& test : _part2Tests) {
 		if (!(this->*test)()) {
+			SetConsoleTextAttribute(_hConsole, RED);
 			std::cout << "[!] Test Failed" << std::endl;
+			SetConsoleTextAttribute(_hConsole, WHITE);
 			return false;
 		}
 	}
+
+	SetConsoleTextAttribute(_hConsole, GREEN);
 	std::cout << "\n[+] Part 2 Passed , congrats !\n" << std::endl;
+	SetConsoleTextAttribute(_hConsole, WHITE);
 	return true;
 }
 
@@ -143,11 +159,16 @@ bool Tester::test_part_3() {
 	// running all the part 3 tests 
 	for (auto& test : _part3Tests) {
 		if (!(this->*test)()) {
+			SetConsoleTextAttribute(_hConsole, RED);
 			std::cout << "[!] Test Failed" << std::endl;
+			SetConsoleTextAttribute(_hConsole, WHITE);
 			return false;
 		}
 	}
+
+	SetConsoleTextAttribute(_hConsole, GREEN);
 	std::cout << "\n[+] Part 3 Passed , congrats !\n" << std::endl;
+	SetConsoleTextAttribute(_hConsole, WHITE);
 	return true;
 }
 
@@ -810,6 +831,7 @@ bool Tester::check_valid_str(const std::string& message, std::string& expectedOu
 	}
 	return true;
 }
+
 
 void Tester::cleanup() {
 
